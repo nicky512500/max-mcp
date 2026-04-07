@@ -1,0 +1,17 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "max-mcp"
+version = "0.1.0"
+description = "MAX Exchange MCP Server"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp[cli]",
+    "httpx",
+    "python-dotenv",
+]
+
+[project.scripts]
+maxmcp = "max_mcp.server:main"
