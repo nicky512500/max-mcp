@@ -355,21 +355,21 @@ def get_closed_orders(
 
 @mcp.tool()
 def get_orders_history(
+    market: str,
     wallet_type: str = "spot",
-    market: Optional[str] = None,
     from_id: Optional[int] = None,
     limit: int = 50,
 ) -> str:
     """
     依 ID 順序分頁取得訂單歷史（適合完整匯出）
+    :param market: 市場 ID（必填），例如 'btcusdt'
     :param wallet_type: 錢包類型，'spot' 或 'm'，預設 'spot'
-    :param market: 篩選市場；留空查全部
     :param from_id: 從指定訂單 ID 開始（用於翻頁）
     :param limit: 回傳筆數，預設 50
     """
     return _json(
         api.get_orders_history(
-            wallet_type=wallet_type, market=market, from_id=from_id, limit=limit
+            market=market, wallet_type=wallet_type, from_id=from_id, limit=limit
         )
     )
 

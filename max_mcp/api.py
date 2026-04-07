@@ -489,23 +489,21 @@ class MaxAPI:
 
     def get_orders_history(
         self,
+        market: str,
         wallet_type: str = "spot",
-        market: str = None,
         from_id: Optional[int] = None,
         limit: int = 50,
         order_by: str = "asc",
     ) -> list:
         """
         依 ID 順序取得訂單歷史（適合分頁爬取）
+        :param market: 市場 ID（必填），例如 'btcusdt'
         :param wallet_type: 'spot' 或 'm'
-        :param market: 篩選市場
         :param from_id: 從指定訂單 ID 開始
         :param limit: 回傳筆數
         :param order_by: asc / desc
         """
-        params: dict = {"limit": limit, "order_by": order_by}
-        if market:
-            params["market"] = market
+        params: dict = {"market": market, "limit": limit, "order_by": order_by}
         if from_id is not None:
             params["from_id"] = from_id
         return self._auth_get(
