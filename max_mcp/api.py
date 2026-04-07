@@ -24,17 +24,24 @@ class MaxAPI:
     # 認證簽名
     # -------------------------------------------------------------------------
 
-    def _auth_headers(self, payload: dict) -> dict:
-        """產生私有 API 所需的認證 headers"""
-        payload["nonce"] = int(time.time() * 1000)
-        encoded = base64.b64encode(json.dumps(payload).encode()).decode()
-        signature = hmac.new(
+    def _make_payload(self, path: str, data: dict, nonce: int) -> str:
+        """產生已排序並 base64 編碼的 payload 字串"""
+        payload = {"path": path, "nonce": nonce, **data}
+        sorted_payload = dict(sorted(payload.items()))
+        return base64.b64encode(
+            json.dumps(sorted_payload, separators=(",", ":")).encode()
+        ).decode()
+
+    def _sign(self, encoded: str) -> str:
+        return hmac.new(
             self.secret_key.encode(), encoded.encode(), hashlib.sha256
         ).hexdigest()
+
+    def _auth_headers(self, encoded: str) -> dict:
         return {
             "X-MAX-ACCESSKEY": self.access_key,
             "X-MAX-PAYLOAD": encoded,
-            "X-MAX-SIGNATURE": signature,
+            "X-MAX-SIGNATURE": self._sign(encoded),
             "Content-Type": "application/json",
         }
 
@@ -44,27 +51,30 @@ class MaxAPI:
         return resp.json()
 
     def _auth_get(self, path: str, params: dict = None) -> dict:
-        payload = {"path": path}
-        if params:
-            payload.update(params)
-        headers = self._auth_headers(payload)
-        resp = self.client.get(path, params=params, headers=headers)
+        nonce = int(time.time() * 1000)
+        data = params or {}
+        encoded = self._make_payload(path, data, nonce)
+        # GET 請求須將 nonce 加入 query string
+        query = {**(params or {}), "nonce": nonce}
+        resp = self.client.get(path, params=query, headers=self._auth_headers(encoded))
         resp.raise_for_status()
         return resp.json()
 
     def _auth_post(self, path: str, body: dict) -> dict:
-        payload = {"path": path}
-        payload.update(body)
-        headers = self._auth_headers(payload)
-        resp = self.client.post(path, json=body, headers=headers)
+        nonce = int(time.time() * 1000)
+        encoded = self._make_payload(path, body, nonce)
+        resp = self.client.post(
+            path, json={**body, "nonce": nonce}, headers=self._auth_headers(encoded)
+        )
         resp.raise_for_status()
         return resp.json()
 
     def _auth_delete(self, path: str, body: dict) -> dict:
-        payload = {"path": path}
-        payload.update(body)
-        headers = self._auth_headers(payload)
-        resp = self.client.request("DELETE", path, json=body, headers=headers)
+        nonce = int(time.time() * 1000)
+        encoded = self._make_payload(path, body, nonce)
+        resp = self.client.request(
+            "DELETE", path, json={**body, "nonce": nonce}, headers=self._auth_headers(encoded)
+        )
         resp.raise_for_status()
         return resp.json()
 
@@ -98,7 +108,7 @@ class MaxAPI:
         """
         params = {}
         if markets:
-            params["markets"] = ",".join(markets)
+            params["markets[]"] = markets
         return self._get("/api/v3/tickers", params=params)
 
     def get_depth(
